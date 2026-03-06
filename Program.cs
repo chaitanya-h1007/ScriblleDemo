@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using ScriblleDemo.Data;
+using ScriblleDemo.Hubs;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -14,6 +15,7 @@ builder.Services.AddDbContext<AppDbContext>(options =>
 );
 builder.Services.AddSession();
 builder.Services.AddControllersWithViews();
+builder.Services.AddSignalR();
 
 var app = builder.Build();
 
@@ -37,6 +39,6 @@ app.MapControllerRoute(
     name: "default",
     pattern: "{controller=Home}/{action=Index}/{id?}")
     .WithStaticAssets();
-
+app.MapHub<GameHub>("/gameHub");
 
 app.Run();

@@ -18,8 +18,8 @@
     </div>
 
     <div class="players-list">
-        <h3>Players (@Model.Players.Count / @Model.MaxPlayers)</h3>
-        <ul>
+        <h3>Players (<span id="playerCount">@Model.Players.Count</span> / @Model.MaxPlayers)</h3>
+        <ul id="playerList">
             @foreach (var player in Model.Players)
             {
                 <li>
@@ -43,7 +43,9 @@
     <div class="player-waiting-box">
         <div class="spinner"></div>
         <p class="waiting-text">Waiting for the host to start the game...</p>
-        <p class="waiting-subtext">@Model.Players.Count player(s) in room</p>
+        <p class="waiting-subtext" id="playerCountText">
+            @Model.Players.Count player(s) in room
+        </p>
     </div>
 
     <form method="post" action="/Lobby/LeaveRoom">
@@ -52,4 +54,48 @@
     </form>
 
 </div>
-<meta http-equiv="refresh" content="5">
+
+<script src="~/lib/signalr/dist/browser/signalr.min.js"></script>
+<script>
+    const connection = new signalR.HubConnectionBuilder()
+        .withUrl("/gameHub")
+        .build();
+
+    const roomCode = "@Model.RoomCode";
+    const myNickname = "@ViewContext.HttpContext.Session.GetString("Nickname")";
+    const myPlayerId = @(playerId ?? 0);
+
+    // ── Server sends updated player list ──
+    connection.on("UpdatePlayerList", function (players) {
+        const list = document.getElementById("playerList");
+        const countEl = document.getElementById("playerCount");
+        const countText = document.getElementById("playerCountText");
+
+        list.innerHTML = "";
+        players.forEach(function (player) {
+            const li = document.createElement("li");
+            const isMe = player.id === myPlayerId;
+            li.innerHTML = isMe
+                ? `<strong>${player.nickname} (You)</strong>${player.isHost ? ' <span class="host-badge">👑 Host</span>' : ''}`
+                : `${player.nickname}${player.isHost ? ' <span class="host-badge">👑 Host</span>' : ''}`;
+            list.appendChild(li);
+        });
+
+        countEl.textContent = players.length;
+        countText.textContent = players.length + " player(s) in room";
+    });
+
+    // ── Server says game has started — redirect immediately ──
+    connection.on("GameStarted", function (roomCode) {
+        window.location.href = "/Game/Index?roomCode=" + roomCode;
+    });
+
+    // ── Connect and join the room group ──
+    connection.start()
+        .then(function () {
+            return connection.invoke("JoinRoom", roomCode, myNickname);
+        })
+        .catch(function (err) {
+            console.error("SignalR error: " + err.toString());
+        });
+</script>

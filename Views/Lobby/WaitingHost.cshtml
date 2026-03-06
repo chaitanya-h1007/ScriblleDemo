@@ -19,8 +19,8 @@
     </div>
 
     <div class="players-list">
-        <h3>Players (@Model.Players.Count / @Model.MaxPlayers)</h3>
-        <ul>
+        <h3>Players (<span id="playerCount">@Model.Players.Count</span> / @Model.MaxPlayers)</h3>
+        <ul id="playerList">
             @foreach (var player in Model.Players)
             {
                 <li>
@@ -43,66 +43,99 @@
 
     <div class="host-controls">
         <h3>Game Settings</h3>
-
-        <form method="post" action="/Lobby/StartGame">
+        <form method="post" action="/Lobby/StartGame" id="startForm">
             <input type="hidden" name="sessionId" value="@Model.Id" />
 
             <div class="form-group">
                 <label>Number of Rounds</label>
                 <select name="totalRounds">
-                    @if (Model.TotalRounds == 3)
-                    {
-                        <option value="3" selected>3 Rounds</option>
-                    }
-                    else
-                    {
-                        <option value="3">3 Rounds</option>
-                    }
-
-                    @if (Model.TotalRounds == 5)
-                    {
-                        <option value="5" selected>5 Rounds</option>
-                    }
-                    else
-                    {
-                        <option value="5">5 Rounds</option>
-                    }
-
-                    @if (Model.TotalRounds == 8)
-                    {
-                        <option value="8" selected>8 Rounds</option>
-                    }
-                    else
-                    {
-                        <option value="8">8 Rounds</option>
-                    }
+                    <option value="3">3 Rounds</option>
+                    <option value="5">5 Rounds</option>
+                    <option value="8">8 Rounds</option>
                 </select>
             </div>
 
-            @if (Model.Players.Count < 2)
-            {
-                <button type="submit" class="btn-start" disabled>
-                    🚀 Start Game
-                </button>
-            }
-            else
-            {
-                <button type="submit" class="btn-start">
-                    🚀 Start Game
-                </button>
-            }
+            <button type="button" id="startBtn" class="btn-start"
+                    @(Model.Players.Count < 2 ? "disabled" : "")
+                    onclick="hostStartGame()">
+                🚀 Start Game
+            </button>
 
-            @if (Model.Players.Count < 2)
-            {
-                <p class="hint">⚠️ Need at least 2 players to start.</p>
-            }
+            <p id="playerHint" class="hint"
+               style="@(Model.Players.Count < 2 ? "" : "display:none")">
+                ⚠️ Need at least 2 players to start.
+            </p>
         </form>
 
-        <form method="post" action="/Lobby/CancelRoom" style="margin-top: 12px;">
+        <form method="post" action="/Lobby/CancelRoom" style="margin-top:12px">
             <input type="hidden" name="sessionId" value="@Model.Id" />
             <button type="submit" class="btn-cancel">❌ Cancel Room</button>
         </form>
     </div>
-
 </div>
-<meta http-equiv="refresh" content="5">
+
+<!-- SignalR client library (built into .NET 8, served from wwwroot) -->
+<script src="~/lib/signalr/dist/browser/signalr.min.js"></script>
+<script>
+    // Connect to the Hub we created
+    const connection = new signalR.HubConnectionBuilder()
+        .withUrl("/gameHub")
+        .build();
+
+    const roomCode = "@Model.RoomCode";
+    const myNickname = "@ViewContext.HttpContext.Session.GetString("Nickname")";
+    const maxPlayers = @Model.MaxPlayers;
+
+    // ── What to do when server sends "UpdatePlayerList" ──
+    connection.on("UpdatePlayerList", function (players) {
+        const list = document.getElementById("playerList");
+        const countEl = document.getElementById("playerCount");
+        const startBtn = document.getElementById("startBtn");
+        const hint = document.getElementById("playerHint");
+
+        // Rebuild the player list HTML
+        list.innerHTML = "";
+        players.forEach(function (player) {
+            const li = document.createElement("li");
+            const isMe = player.nickname === myNickname && player.isHost;
+            li.innerHTML = isMe
+                ? `<strong>${player.nickname} (You)</strong> <span class="host-badge">👑 Host</span>`
+                : `${player.nickname}${player.isHost ? ' <span class="host-badge">👑 Host</span>' : ''}`;
+            list.appendChild(li);
+        });
+
+        // Update count and enable/disable start button
+        countEl.textContent = players.length;
+        if (players.length >= 2) {
+            startBtn.disabled = false;
+            hint.style.display = "none";
+        } else {
+            startBtn.disabled = true;
+            hint.style.display = "block";
+        }
+    });
+
+    // ── What to do when server says game started ──
+    connection.on("GameStarted", function (roomCode) {
+        window.location.href = "/Game/Index?roomCode=" + roomCode;
+    });
+
+    // ── Start the connection then join the room group ──
+    connection.start()
+        .then(function () {
+            return connection.invoke("JoinRoom", roomCode, myNickname);
+        })
+        .catch(function (err) {
+            console.error("SignalR connection error: " + err.toString());
+        });
+
+    // ── Host clicks Start Game ──
+    function hostStartGame() {
+        // Tell all players via SignalR that game is starting
+        connection.invoke("StartGame", roomCode)
+            .then(function () {
+                // Then submit the form to update DB
+                document.getElementById("startForm").submit();
+            });
+    }
+</script>
