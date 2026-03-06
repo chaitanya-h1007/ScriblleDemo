@@ -1,0 +1,108 @@
+﻿@model ScriblleDemo.Models.GameSession
+
+@{
+    ViewData["Title"] = "Waiting Room - Host";
+    var playerId = ViewContext.HttpContext.Session.GetInt32("PlayerId");
+}
+
+<div class="waiting-container">
+
+    <div class="waiting-header host-header">
+        <h2>⏳ Waiting Room</h2>
+        <span class="role-badge host-role">👑 You are the Host</span>
+    </div>
+
+    <div class="room-code-box">
+        <p>Share this code with friends:</p>
+        <span class="room-code">@Model.RoomCode</span>
+        <p class="room-hint">Players can join at the home page → Join Room</p>
+    </div>
+
+    <div class="players-list">
+        <h3>Players (@Model.Players.Count / @Model.MaxPlayers)</h3>
+        <ul>
+            @foreach (var player in Model.Players)
+            {
+                <li>
+                    @if (player.Id == playerId)
+                    {
+                        <strong>@player.Nickname (You)</strong>
+                    }
+                    else
+                    {
+                        @player.Nickname
+                    }
+                    @if (player.IsHost)
+                    {
+                        <span class="host-badge">👑 Host</span>
+                    }
+                </li>
+            }
+        </ul>
+    </div>
+
+    <div class="host-controls">
+        <h3>Game Settings</h3>
+
+        <form method="post" action="/Lobby/StartGame">
+            <input type="hidden" name="sessionId" value="@Model.Id" />
+
+            <div class="form-group">
+                <label>Number of Rounds</label>
+                <select name="totalRounds">
+                    @if (Model.TotalRounds == 3)
+                    {
+                        <option value="3" selected>3 Rounds</option>
+                    }
+                    else
+                    {
+                        <option value="3">3 Rounds</option>
+                    }
+
+                    @if (Model.TotalRounds == 5)
+                    {
+                        <option value="5" selected>5 Rounds</option>
+                    }
+                    else
+                    {
+                        <option value="5">5 Rounds</option>
+                    }
+
+                    @if (Model.TotalRounds == 8)
+                    {
+                        <option value="8" selected>8 Rounds</option>
+                    }
+                    else
+                    {
+                        <option value="8">8 Rounds</option>
+                    }
+                </select>
+            </div>
+
+            @if (Model.Players.Count < 2)
+            {
+                <button type="submit" class="btn-start" disabled>
+                    🚀 Start Game
+                </button>
+            }
+            else
+            {
+                <button type="submit" class="btn-start">
+                    🚀 Start Game
+                </button>
+            }
+
+            @if (Model.Players.Count < 2)
+            {
+                <p class="hint">⚠️ Need at least 2 players to start.</p>
+            }
+        </form>
+
+        <form method="post" action="/Lobby/CancelRoom" style="margin-top: 12px;">
+            <input type="hidden" name="sessionId" value="@Model.Id" />
+            <button type="submit" class="btn-cancel">❌ Cancel Room</button>
+        </form>
+    </div>
+
+</div>
+<meta http-equiv="refresh" content="5">

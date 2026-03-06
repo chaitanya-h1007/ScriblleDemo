@@ -12,6 +12,8 @@ var connectionString = builder.Configuration
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseSqlServer(connectionString)
 );
+builder.Services.AddSession();
+builder.Services.AddControllersWithViews();
 
 var app = builder.Build();
 
@@ -27,7 +29,8 @@ app.UseHttpsRedirection();
 app.UseRouting();
 
 app.UseAuthorization();
-
+//Use the sessions
+app.UseSession();
 app.MapStaticAssets();
 
 app.MapControllerRoute(

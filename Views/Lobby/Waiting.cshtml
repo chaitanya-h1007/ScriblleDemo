@@ -1,0 +1,53 @@
+﻿@model ScriblleDemo.Models.GameSession
+
+@{
+    ViewData["Title"] = "Waiting Room";
+    var playerId = Context.Session.GetInt32("PlayerId");
+    var currentPlayer = Model.Players.FirstOrDefault(p => p.Id == playerId);
+    var isHost = currentPlayer?.IsHost ?? false;
+}
+
+<div class="waiting-container">
+    <h2>⏳ Waiting Room</h2>
+
+    <div class="room-code-box">
+        <p>Share this code with friends:</p>
+        <span class="room-code">@Model.RoomCode</span>
+    </div>
+
+    <div class="players-list">
+        <h3>Players (@Model.Players.Count / @Model.MaxPlayers)</h3>
+        <ul>
+            @foreach (var player in Model.Players)
+            {
+                <li>
+                    @player.Nickname
+                    @if (player.IsHost)
+                    {
+                        <span class="host-badge">👑 Host</span>
+                    }
+                </li>
+            }
+        </ul>
+    </div>
+
+    @if (isHost)
+    {
+        <form method="post" action="/Lobby/StartGame">
+            <input type="hidden" name="sessionId" value="@Model.Id" />
+            <button type="submit" class="btn-start"
+                    @(Model.Players.Count < 2 ? "disabled" : "")>
+                🚀 Start Game
+            </button>
+        </form>
+
+        @if (Model.Players.Count < 2)
+        {
+            <p class="hint">Need at least 2 players to start.</p>
+        }
+    }
+    else
+    {
+        <p class="waiting-text">Waiting for the host to start the game...</p>
+    }
+</div>

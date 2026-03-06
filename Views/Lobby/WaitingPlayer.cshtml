@@ -1,0 +1,55 @@
+﻿@model ScriblleDemo.Models.GameSession
+
+@{
+    ViewData["Title"] = "Waiting Room";
+    var playerId = ViewContext.HttpContext.Session.GetInt32("PlayerId");
+}
+
+<div class="waiting-container">
+
+    <div class="waiting-header player-header">
+        <h2>⏳ Waiting Room</h2>
+        <span class="role-badge player-role">🎮 You are a Player</span>
+    </div>
+
+    <div class="room-code-box">
+        <p>Room Code:</p>
+        <span class="room-code">@Model.RoomCode</span>
+    </div>
+
+    <div class="players-list">
+        <h3>Players (@Model.Players.Count / @Model.MaxPlayers)</h3>
+        <ul>
+            @foreach (var player in Model.Players)
+            {
+                <li>
+                    @if (player.Id == playerId)
+                    {
+                        <strong>@player.Nickname (You)</strong>
+                    }
+                    else
+                    {
+                        @player.Nickname
+                    }
+                    @if (player.IsHost)
+                    {
+                        <span class="host-badge">👑 Host</span>
+                    }
+                </li>
+            }
+        </ul>
+    </div>
+
+    <div class="player-waiting-box">
+        <div class="spinner"></div>
+        <p class="waiting-text">Waiting for the host to start the game...</p>
+        <p class="waiting-subtext">@Model.Players.Count player(s) in room</p>
+    </div>
+
+    <form method="post" action="/Lobby/LeaveRoom">
+        <input type="hidden" name="sessionId" value="@Model.Id" />
+        <button type="submit" class="btn-leave">🚪 Leave Room</button>
+    </form>
+
+</div>
+<meta http-equiv="refresh" content="5">

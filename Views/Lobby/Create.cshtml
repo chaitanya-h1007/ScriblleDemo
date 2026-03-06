@@ -1,0 +1,34 @@
+﻿
+@{
+    ViewData["Title"] = "Create Room";
+}
+
+<div class="form-container">
+    <h2>🎨 Create a Room</h2>
+    <p>You'll be the host. Share the room code with friends!</p>
+
+    @if (ViewBag.Error != null)
+    {
+        <div class="error-message">@ViewBag.Error</div>
+    }
+
+    <form method="post" action="/Lobby/Create">
+        <div class="form-group">
+            <label>Your Nickname</label>
+            <input type="text" name="nickname" maxlength="50"
+                   placeholder="Enter your nickname" required />
+        </div>
+
+        <div class="form-group">
+            <label>Number of Rounds</label>
+            <select name="totalRounds">
+                <option value="3">3 Rounds</option>
+                <option value="5">5 Rounds</option>
+                <option value="8">8 Rounds</option>
+            </select>
+        </div>
+
+        <button type="submit" class="btn-primary">Create Room</button>
+        <a href="/" class="btn-back">← Back</a>
+    </form>
+</div>
