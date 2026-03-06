@@ -1,0 +1,320 @@
+﻿@model ScriblleDemo.Models.GameSession
+
+@{
+    ViewData["Title"] = "Game";
+    var isDrawer = (bool)ViewBag.IsDrawer;
+    var wordToDraw = (string)ViewBag.WordToDraw;
+    var roomCode = (string)ViewBag.RoomCode;
+    var currentRound = (ScriblleDemo.Models.Round)ViewBag.CurrentRound;
+    var currentPlayer = (ScriblleDemo.Models.Player)ViewBag.CurrentPlayer;
+}
+
+<div class="game-wrapper">
+
+    <!-- ── LEFT: Player List + Scores ── -->
+    <div class="game-sidebar">
+        <h3>Players</h3>
+        <ul class="score-list" id="scoreList">
+            @foreach (var player in Model.Players.OrderByDescending(p => p.Score))
+            {
+                <li class="@(player.Id == currentPlayer.Id ? "me" : "")">
+                    <span class="player-name">
+                        @if (player.IsHost)
+                        {
+                            <span>👑</span>
+                        }
+                        @player.Nickname
+                        @if (player.Id == currentPlayer.Id)
+                        {
+                            <span>(You)</span>
+                        }
+                    </span>
+                    <span class="player-score" id="score-@player.Id">
+                        @player.Score pts
+                    </span>
+                </li>
+            }
+        </ul>
+    </div>
+
+    <!-- ── MIDDLE: Canvas ── -->
+    <div class="game-main">
+
+        <div class="game-info-bar">
+            <span>Round @currentRound.RoundNumber / @ViewBag.TotalRounds</span>
+            <span class="word-display">
+                @if (isDrawer)
+                {
+                    <strong>Draw: @wordToDraw</strong>
+                }
+                else
+                {
+                    <span>Guess the word!</span>
+                }
+            </span>
+            <span id="timer" class="timer">80</span>
+        </div>
+
+        <div class="canvas-container">
+            <canvas id="drawingCanvas" width="800" height="500"></canvas>
+            @if (!isDrawer)
+            {
+                <!-- Transparent overlay blocks non-drawers from drawing -->
+                <div id="canvasOverlay"></div>
+            }
+        </div>
+
+        @if (isDrawer)
+        {
+            <!-- Drawing tools — only visible to drawer -->
+            <div class="drawing-tools">
+                <div class="tool-group">
+                    <label>Color</label>
+                    <div class="color-palette">
+                        <button class="color-btn active" style="background:#000000"
+                                onclick="setColor('#000000')"></button>
+                        <button class="color-btn" style="background:#FF0000"
+                                onclick="setColor('#FF0000')"></button>
+                        <button class="color-btn" style="background:#FF6600"
+                                onclick="setColor('#FF6600')"></button>
+                        <button class="color-btn" style="background:#FFFF00"
+                                onclick="setColor('#FFFF00')"></button>
+                        <button class="color-btn" style="background:#00CC00"
+                                onclick="setColor('#00CC00')"></button>
+                        <button class="color-btn" style="background:#0000FF"
+                                onclick="setColor('#0000FF')"></button>
+                        <button class="color-btn" style="background:#9900CC"
+                                onclick="setColor('#9900CC')"></button>
+                        <button class="color-btn" style="background:#FF69B4"
+                                onclick="setColor('#FF69B4')"></button>
+                        <button class="color-btn" style="background:#FFFFFF"
+                                style="border: 2px solid #ccc"
+                                onclick="setColor('#FFFFFF')"></button>
+                    </div>
+                </div>
+
+                <div class="tool-group">
+                    <label>Size</label>
+                    <input type="range" id="brushSize" min="2" max="40"
+                           value="6" oninput="setBrushSize(this.value)" />
+                </div>
+
+                <button class="btn-clear"
+                        onclick="clearCanvas()">
+                    🗑️ Clear
+                </button>
+            </div>
+        }
+
+        <!-- Guess input — only for non-drawers -->
+        @if (!isDrawer)
+        {
+            <div class="guess-area">
+                <input type="text" id="guessInput"
+                       placeholder="Type your guess here..."
+                       maxlength="100"
+                       onkeydown="if(event.key==='Enter') submitGuess()" />
+                <button class="btn-guess" onclick="submitGuess()">
+                    Guess!
+                </button>
+            </div>
+        }
+    </div>
+
+    <!-- ── RIGHT: Chat / Guess Feed ── -->
+    <div class="game-chat">
+        <h3>Guesses</h3>
+        <div class="chat-messages" id="chatMessages"></div>
+    </div>
+
+</div>
+
+<script src="~/lib/signalr/dist/browser/signalr.min.js"></script>
+<script>
+    // ── State ──
+    const roomCode = "@roomCode";
+    const myNickname = "@currentPlayer.Nickname";
+    const isDrawer = @(isDrawer ? "true" : "false");
+    const canvas = document.getElementById("drawingCanvas");
+    const ctx = canvas.getContext("2d");
+
+    let isDrawing = false;
+    let currentColor = "#000000";
+    let brushSize = 6;
+    let lastX = 0;
+    let lastY = 0;
+    let timeLeft = @currentRound.TimeLimit;
+
+    // ── SignalR Connection ──
+    const connection = new signalR.HubConnectionBuilder()
+        .withUrl("/gameHub")
+        .build();
+
+    // ── Receive stroke from other players ──
+    connection.on("ReceiveStroke", function (x, y, prevX, prevY, color, size, isNewStroke) {
+        drawStroke(
+            x * canvas.width,
+            y * canvas.height,
+            prevX * canvas.width,
+            prevY * canvas.height,
+            color, size, isNewStroke
+        );
+    });
+
+    // ── Canvas cleared by drawer ──
+    connection.on("CanvasCleared", function () {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+    });
+
+    // ── Someone guessed correctly ──
+    connection.on("CorrectGuess", function (nickname, word) {
+        addChatMessage(nickname + " guessed correctly! 🎉 The word was: " + word, "correct");
+    });
+
+    // ── Wrong guess broadcast ──
+    connection.on("WrongGuess", function (nickname, guess) {
+        addChatMessage(nickname + ": " + guess, "wrong");
+    });
+
+    // ── Next round ──
+    connection.on("NextRound", function (roomCode) {
+        setTimeout(function () {
+            window.location.href = "/Game/Index?roomCode=" + roomCode;
+        }, 2000);
+    });
+
+    // ── Game over ──
+    connection.on("GameOver", function (roomCode) {
+        setTimeout(function () {
+            window.location.href = "/Game/Scoreboard?roomCode=" + roomCode;
+        }, 2000);
+    });
+
+    // ── Update scores live ──
+    connection.on("UpdatePlayerList", function (players) {
+        players.forEach(function (player) {
+            const scoreEl = document.getElementById("score-" + player.id);
+            if (scoreEl) scoreEl.textContent = player.score + " pts";
+        });
+    });
+
+    // ── Start connection ──
+    connection.start()
+        .then(function () {
+            connection.invoke("JoinRoom", roomCode, myNickname);
+        })
+        .catch(function (err) {
+            console.error("SignalR error:", err);
+        });
+
+    // ── Drawing Functions ──
+    function getPos(e) {
+        const rect = canvas.getBoundingClientRect();
+        return {
+            x: (e.clientX - rect.left) / canvas.width,
+            y: (e.clientY - rect.top) / canvas.height
+        };
+    }
+
+    function drawStroke(x, y, prevX, prevY, color, size, isNewStroke) {
+        ctx.beginPath();
+        ctx.strokeStyle = color;
+        ctx.lineWidth = size;
+        ctx.lineCap = "round";
+        ctx.lineJoin = "round";
+        if (isNewStroke) {
+            ctx.moveTo(x, y);
+        } else {
+            ctx.moveTo(prevX, prevY);
+        }
+        ctx.lineTo(x, y);
+        ctx.stroke();
+    }
+
+    function setColor(color) {
+        currentColor = color;
+        document.querySelectorAll(".color-btn")
+            .forEach(b => b.classList.remove("active"));
+        event.target.classList.add("active");
+    }
+
+    function setBrushSize(val) { brushSize = parseInt(val); }
+
+    function clearCanvas() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        connection.invoke("ClearCanvas", roomCode);
+    }
+
+    // ── Mouse Events (Drawing) ──
+    if (isDrawer) {
+        canvas.addEventListener("mousedown", function (e) {
+            isDrawing = true;
+            const pos = getPos(e);
+            lastX = pos.x;
+            lastY = pos.y;
+        });
+
+        canvas.addEventListener("mousemove", function (e) {
+            if (!isDrawing) return;
+            const pos = getPos(e);
+
+            // Draw locally immediately (feels instant)
+            drawStroke(
+                pos.x * canvas.width,
+                pos.y * canvas.height,
+                lastX * canvas.width,
+                lastY * canvas.height,
+                currentColor, brushSize, false
+            );
+
+            // Send to other players via SignalR
+            connection.invoke(
+                "SendStroke",
+                roomCode,
+                pos.x, pos.y,
+                lastX, lastY,
+                currentColor, brushSize, false
+            );
+
+            lastX = pos.x;
+            lastY = pos.y;
+        });
+
+        canvas.addEventListener("mouseup", function () { isDrawing = false; });
+        canvas.addEventListener("mouseleave", function () { isDrawing = false; });
+    }
+
+    // ── Guess submission ──
+    function submitGuess() {
+        const input = document.getElementById("guessInput");
+        const guess = input.value.trim();
+        if (!guess) return;
+        connection.invoke("SubmitGuess", roomCode, myNickname, guess);
+        input.value = "";
+    }
+
+    // ── Chat helper ──
+    function addChatMessage(text, type) {
+        const chat = document.getElementById("chatMessages");
+        const div = document.createElement("div");
+        div.className = "chat-msg " + type;
+        div.textContent = text;
+        chat.appendChild(div);
+        chat.scrollTop = chat.scrollHeight;
+    }
+
+    // ── Countdown Timer ──
+    const timerEl = document.getElementById("timer");
+    const countdown = setInterval(function () {
+        timeLeft--;
+        timerEl.textContent = timeLeft;
+        if (timeLeft <= 10) timerEl.style.color = "red";
+        if (timeLeft <= 0) {
+            clearInterval(countdown);
+            // Time up — move to next round
+            if (isDrawer) {
+                connection.invoke("SubmitGuess", roomCode, "__timeout__", "__skip__");
+            }
+        }
+    }, 1000);
+</script>

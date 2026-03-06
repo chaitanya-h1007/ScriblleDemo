@@ -184,3 +184,286 @@ body {
         transform: rotate(360deg);
     }
 }
+
+
+/* ── Game Layout ── */
+.game-wrapper {
+    display: flex;
+    gap: 12px;
+    padding: 12px;
+    height: calc(100vh - 60px);
+    box-sizing: border-box;
+}
+
+.game-sidebar {
+    width: 160px;
+    background: #fff;
+    border-radius: 12px;
+    padding: 16px;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+    overflow-y: auto;
+}
+
+.game-main {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.game-chat {
+    width: 200px;
+    background: #fff;
+    border-radius: 12px;
+    padding: 16px;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+    display: flex;
+    flex-direction: column;
+}
+
+/* ── Info Bar ── */
+.game-info-bar {
+    background: #fff;
+    border-radius: 10px;
+    padding: 10px 20px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+}
+
+.word-display {
+    font-size: 1.1rem;
+    color: #333;
+}
+
+.timer {
+    font-size: 1.4rem;
+    font-weight: bold;
+    color: #4CAF50;
+    min-width: 40px;
+    text-align: right;
+}
+
+/* ── Canvas ── */
+.canvas-container {
+    position: relative;
+    background: #fff;
+    border-radius: 10px;
+    overflow: hidden;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.1);
+}
+
+#drawingCanvas {
+    display: block;
+    width: 100%;
+    cursor: crosshair;
+}
+
+#canvasOverlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    cursor: not-allowed;
+}
+
+/* ── Drawing Tools ── */
+.drawing-tools {
+    background: #fff;
+    border-radius: 10px;
+    padding: 12px 16px;
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+}
+
+.tool-group {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+    .tool-group label {
+        font-size: 0.85rem;
+        color: #666;
+        font-weight: bold;
+    }
+
+.color-palette {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+}
+
+.color-btn {
+    width: 26px;
+    height: 26px;
+    border-radius: 50%;
+    border: 3px solid transparent;
+    cursor: pointer;
+    padding: 0;
+}
+
+    .color-btn.active {
+        border-color: #333;
+        transform: scale(1.2);
+    }
+
+.btn-clear {
+    background: #f44336;
+    color: white;
+    border: none;
+    padding: 8px 16px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-weight: bold;
+}
+
+/* ── Guess Area ── */
+.guess-area {
+    display: flex;
+    gap: 8px;
+}
+
+    .guess-area input {
+        flex: 1;
+        padding: 10px 14px;
+        border: 2px solid #ddd;
+        border-radius: 8px;
+        font-size: 1rem;
+        outline: none;
+    }
+
+        .guess-area input:focus {
+            border-color: #2196F3;
+        }
+
+.btn-guess {
+    background: #2196F3;
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-weight: bold;
+}
+
+/* ── Score List ── */
+.score-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+    .score-list li {
+        padding: 8px 4px;
+        border-bottom: 1px solid #f0f0f0;
+        font-size: 0.85rem;
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+    }
+
+        .score-list li.me {
+            background: #f0f8ff;
+            border-radius: 6px;
+            padding: 8px;
+        }
+
+.player-score {
+    color: #4CAF50;
+    font-weight: bold;
+    font-size: 0.8rem;
+}
+
+/* ── Chat ── */
+.chat-messages {
+    flex: 1;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    margin-top: 8px;
+}
+
+.chat-msg {
+    padding: 6px 10px;
+    border-radius: 8px;
+    font-size: 0.85rem;
+    word-break: break-word;
+}
+
+    .chat-msg.correct {
+        background: #d4edda;
+        color: #155724;
+        font-weight: bold;
+    }
+
+    .chat-msg.wrong {
+        background: #f8f9fa;
+        color: #555;
+    }
+
+/* ── Scoreboard ── */
+.scoreboard-container {
+    max-width: 500px;
+    margin: 60px auto;
+    text-align: center;
+}
+
+    .scoreboard-container h1 {
+        font-size: 2.5rem;
+        margin-bottom: 8px;
+    }
+
+.room-code-small {
+    color: #999;
+    margin-bottom: 30px;
+}
+
+.final-scores {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.score-row {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    background: #fff;
+    border-radius: 12px;
+    padding: 16px 24px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.07);
+}
+
+    .score-row.rank-1 {
+        border-left: 5px solid gold;
+    }
+
+    .score-row.rank-2 {
+        border-left: 5px solid silver;
+    }
+
+    .score-row.rank-3 {
+        border-left: 5px solid #cd7f32;
+    }
+
+.rank-medal {
+    font-size: 1.5rem;
+}
+
+.score-name {
+    flex: 1;
+    font-size: 1.1rem;
+    text-align: left;
+}
+
+.score-pts {
+    font-weight: bold;
+    color: #4CAF50;
+    font-size: 1.1rem;
+}
